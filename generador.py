@@ -52,17 +52,22 @@ def procesar_directorio(directorio, fecha_inicial=None, fecha_final=None, hashta
     return tweets, num_tweets_comprimidos
 
 
-def generar_grafo_retweets(tweets):
+def generar_grafo_retweets_from_json(json_retweets):
     G = nx.Graph()
 
-    for tweet in tweets:
-        if 'retweeted_status' in tweet:
-            user_original = tweet['retweeted_status']['user']['screen_name']
-            user_retweeter = tweet['user']['screen_name']
-
-            G.add_edge(user_retweeter, user_original)
+    for user_data in json_retweets['retweets']:
+        user_retweeter = user_data['username']
+        for tweet_id, tweet_info in user_data['tweets'].items():
+            retweeted_by = tweet_info['retweetedBy']
+            if isinstance(retweeted_by, list):
+                for user_original in retweeted_by:
+                    G.add_edge(user_retweeter, user_original)
+            else:
+                # Handle the case where 'retweetedBy' is not a list but a single user
+                G.add_edge(user_retweeter, retweeted_by)
 
     return G
+
 
 
 def generar_json_retweets(tweets):
@@ -93,16 +98,14 @@ def generar_json_retweets(tweets):
     return result_json
 
 
-def generar_grafo_menciones(tweets):
+def generar_grafo_menciones_from_json(json_menciones):
     G = nx.Graph()
 
-    for tweet in tweets:
-        user_mentions = tweet['entities']['user_mentions']
-        if user_mentions:
-            user_source = tweet['user']['screen_name']
-            for mention in user_mentions:
-                user_target = mention['screen_name']
-                G.add_edge(user_source, user_target)
+    for user_data in json_menciones['mentions']:
+        user_source = user_data['username']
+        for mention_data in user_data['mentions']:
+            user_target = mention_data['mentionBy']
+            G.add_edge(user_source, user_target)
 
     return G
 
@@ -145,16 +148,13 @@ def generar_json_menciones(tweets):
 
 
 
-def generar_grafo_corretweets(tweets):
+def generar_grafo_corretweets_from_json(json_corretweets):
     G = nx.Graph()
 
-    for tweet in tweets:
-        if 'retweeted_status' in tweet:
-            user_original = tweet['retweeted_status']['user']['screen_name']
-            user_retweeter = tweet['user']['screen_name']
-
-            # Agregar la relación de corretweet al grafo
-            G.add_edge(user_retweeter, user_original)
+    for coretweet_data in json_corretweets['coretweets']:
+        for retweeter in coretweet_data['retweeters']:
+            G.add_edge(retweeter, coretweet_data['authors']['u1'])
+            G.add_edge(retweeter, coretweet_data['authors']['u2'])
 
     return G
 
@@ -222,23 +222,24 @@ def main(argv):
     directorio_completo = os.path.abspath(directorio)
     tweets, num_tweets_comprimidos = procesar_directorio(directorio_completo, fecha_inicial, fecha_final, hashtags_file)
 
-    # Generar grafo de retweets y guardar en formato GEXF
-    grafo_retweets = generar_grafo_retweets(tweets)
-    nx.write_gexf(grafo_retweets, 'rt.gexf')
-
+    
     # Generar JSON de retweets ordenado y guardar en formato JSON
     json_retweets = generar_json_retweets(tweets)
     with open('rt.json', 'w') as json_file:
         json.dump(json_retweets, json_file, indent=4)
 
-    # Generar grafo de menciones y guardar en formato GEXF
-    grafo_menciones = generar_grafo_menciones(tweets)
-    nx.write_gexf(grafo_menciones, 'mencion.gexf')
+    # Generar grafo de retweets y guardar en formato GEXF
+    grafo_retweets = generar_grafo_retweets_from_json(json_retweets)
+    nx.write_gexf(grafo_retweets, 'rt.gexf')
 
     # Generar JSON de menciones ordenado y guardar en formato JSON
     json_menciones = generar_json_menciones(tweets)
     with open('mencion.json', 'w') as json_file:
         json.dump(json_menciones, json_file, indent=4)
+    
+     # Generar grafo de menciones y guardar en formato GEXF
+    grafo_menciones = generar_grafo_menciones_from_json(json_menciones)
+    nx.write_gexf(grafo_menciones, 'mencion.gexf')
 
     # Generar JSON de corretweets y guardar en formato JSON
     json_corretweets = generar_json_corretweets(tweets)
@@ -246,9 +247,8 @@ def main(argv):
         json.dump(json_corretweets, json_file, indent=4)
 
     # Generar grafo de corretweets y guardar en formato GEXF
-    grafo_corretweets = generar_grafo_corretweets(tweets)
+    grafo_corretweets = generar_grafo_corretweets_from_json(json_corretweets)
     nx.write_gexf(grafo_corretweets, 'corrtw.gexf')
-
 
     # Imprimir el tiempo de ejecución total en segundos
     print("Tiempo de ejecución total:", time.time() - start_time, "segundos")
