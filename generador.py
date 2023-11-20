@@ -9,43 +9,6 @@ from datetime import datetime
 from collections import defaultdict
 import argparse
 
-'''def procesar_tweets(archivo_bz2):
-    tweets = []  # Lista para almacenar los tweets procesados
-
-    with bz2.BZ2File(archivo_bz2, 'rb') as f_in:
-        for line in f_in:
-            tweet_data = json.loads(line.decode('utf-8'))  # Lee el archivo JSON línea por línea
-
-            # Verifica la presencia del campo 'created_at' en el tweet antes de intentar acceder a él
-            if 'created_at' in tweet_data:
-                created_at = datetime.strptime(tweet_data['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
-                tweets.append(tweet_data)  # Agrega el tweet a la lista si cumple con las condiciones
-
-    return tweets
-
-
-def tiene_hashtags(tweet, hashtags_file):
-    with open(hashtags_file, 'r') as file:
-        hashtags = set(line.strip() for line in file)
-
-    tweet_hashtags = set(hashtag['text'].lower() for hashtag in tweet['entities']['hashtags'])
-
-    return bool(hashtags.intersection(tweet_hashtags))
-
-
-def procesar_directorio(directorio):
-    num_tweets_comprimidos = 0  # Contador para el número de tweets comprimidos encontrados
-    tweets = []  # Lista para almacenar todos los tweets procesados
-
-    for root, _, files in os.walk(directorio):
-        print("Recorriendo directorio:", root)  # Imprime el directorio actual
-        for archivo in files:
-            if archivo.endswith('.json.bz2'):
-                archivo_bz2 = os.path.join(root, archivo)
-                num_tweets_comprimidos += 1  # Incrementa el contador de tweets comprimidos encontrados
-                
-                tweets.extend(procesar_tweets(archivo_bz2))  # Extiende la lista de tweets con los tweets del archivo
-    return tweets, num_tweets_comprimidos'''
 
 def procesar_tweets(archivo_bz2, fecha_inicial=None, fecha_final=None, archivo_hashtags=None):
     tweets = []
@@ -78,7 +41,7 @@ def procesar_directorio(directorio, fecha_inicial=None, fecha_final=None, archiv
     tweets = []
 
     for root, _, files in os.walk(directorio):
-        print("Recorriendo directorio:", root)
+        #print("Recorriendo directorio:", root)
         for archivo in files:
             if archivo.endswith('.json.bz2'):
                 archivo_bz2 = os.path.join(root, archivo)
@@ -115,7 +78,7 @@ def json_retweets(tweets):
     with open('rt.json', 'w') as json_file:
             json.dump(result_json, json_file, indent=4)
 
-    print("JSON de retweets generado")
+    #print("JSON de retweets generado")
 
 
 def json_menciones(tweets):
@@ -154,7 +117,7 @@ def json_menciones(tweets):
 
     with open('mencion.json', 'w') as json_file:
             json.dump(result_json, json_file, indent=4)
-    print("JSON menciones generado")
+    #print("JSON menciones generado")
 
 
 def json_corretweets(tweets):
@@ -188,7 +151,7 @@ def json_corretweets(tweets):
 
     with open('corrtw.json', 'w') as json_file:
             json.dump(corrtweets_json, json_file, indent=4)
-    print("JSON corretweets generado")
+    #print("JSON corretweets generado")
 
 def generar_grafo_retweets(tweets):
     G = nx.DiGraph()
@@ -274,22 +237,23 @@ def main():
 
     if args.json_corretweets:
         json_corretweets(tweets)
+
     if args.grafo_retweets:
         grafo_retweets = generar_grafo_retweets(tweets)
         nx.write_gexf(grafo_retweets, 'rt.gexf')
-        print("Grafo de retweets generado (rt.gexf)")
+        #print("Grafo de retweets generado (rt.gexf)")
     
     if args.grafo_menciones:
         grafo_menciones = generar_grafo_menciones(tweets)
         nx.write_gexf(grafo_menciones, 'mencion.gexf')
-        print("Grafo de menciones generado (mencion.gexf)")
+        #print("Grafo de menciones generado (mencion.gexf)")
     
     if args.grafo_corretweets:
         grafo_corretweets = generar_grafo_corretweets(tweets)
         nx.write_gexf(grafo_corretweets, 'corrtw.gexf')
-        print("Grafo de co-retweets generado (corrtw.gexf)")
+        #print("Grafo de co-retweets generado (corrtw.gexf)")
 
     print("Tiempo de ejecución total:", time.time() - start_time, "segundos")
-    print("Argumentos ingresados: ", args)
+   # print("Argumentos ingresados: ", args)
 if __name__ == "__main__":
     main()
