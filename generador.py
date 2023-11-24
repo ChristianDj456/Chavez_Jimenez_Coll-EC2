@@ -1,7 +1,6 @@
 import os
 import json
 import bz2
-import getopt
 import sys
 import time
 import networkx as nx
@@ -211,11 +210,11 @@ def generar_grafo_corretweets(tweets):
     return G
 
 def main():
-    parser = argparse.ArgumentParser(description='Procesador de tweets')
+    parser = argparse.ArgumentParser(description='Procesador de tweets', add_help = False)
     parser.add_argument('-d', '--dir', type=str, default='data', help='Directorio de entrada')
     parser.add_argument('-fi', '--fecha_inicial', type=lambda s: datetime.strptime(s, '%d-%m-%y'), help='Fecha inicial (dd-mm-aa) para filtrar tweets')
     parser.add_argument('-ff', '--fecha_final', type=lambda s: datetime.strptime(s, '%d-%m-%y'), help='Fecha final (dd-mm-aa) para filtrar tweets')
-    parser.add_argument('-ht', '--archivo_hashtags', type=str, help='Archivo de texto con hashtags para filtrar tweets')
+    parser.add_argument('-h', '--archivo_hashtags', type=str, help='Archivo de texto con hashtags para filtrar tweets')
     parser.add_argument('-grt', '--grafo_retweets', action='store_true', help='Generar grafo de retweets (rt.gexf)')
     parser.add_argument('-gm', '--grafo_menciones', action='store_true', help='Generar grafo de menciones (mencion.gexf)')
     parser.add_argument('-gcrt', '--grafo_corretweets', action='store_true', help='Generar grafo de corretweets (corrtw.gexf)')
