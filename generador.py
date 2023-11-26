@@ -7,10 +7,6 @@ import networkx as nx
 from datetime import datetime
 from collections import defaultdict
 import argparse
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
 
 
 def procesar_tweets(archivo_bz2, fecha_inicial=None, fecha_final=None, archivo_hashtags=None):
@@ -43,14 +39,14 @@ def procesar_directorio(directorio, fecha_inicial=None, fecha_final=None, archiv
     num_tweets_comprimidos = 0
     tweets = []
 
-    for i, (root, _, files) in enumerate(os.walk(directorio)):
-        if i % size == rank:
-            for archivo in files:
-                if archivo.endswith('.json.bz2'):
-                    archivo_bz2 = os.path.join(root, archivo)
-                    num_tweets_comprimidos += 1
-                    tweets.extend(procesar_tweets(archivo_bz2, fecha_inicial, fecha_final, archivo_hashtags))
-
+    for root, _, files in os.walk(directorio):
+        #print("Recorriendo directorio:", root)
+        for archivo in files:
+            if archivo.endswith('.json.bz2'):
+                archivo_bz2 = os.path.join(root, archivo)
+                num_tweets_comprimidos += 1
+                
+                tweets.extend(procesar_tweets(archivo_bz2, fecha_inicial, fecha_final, archivo_hashtags))
     return tweets, num_tweets_comprimidos
 
 def json_retweets(tweets):
@@ -214,6 +210,9 @@ def generar_grafo_corretweets(tweets):
     return G
 
 def main():
+
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(description='Procesador de tweets', add_help = False)
     parser.add_argument('-d', '--dir', type=str, default='data', help='Directorio de entrada')
     parser.add_argument('-fi', '--fecha_inicial', type=lambda s: datetime.strptime(s, '%d-%m-%y'), help='Fecha inicial (dd-mm-aa) para filtrar tweets')
@@ -227,41 +226,36 @@ def main():
     parser.add_argument('-jcrt', '--json_corretweets', action='store_true', help='Generar JSON de co-retweets (corrtw.json)')
     args = parser.parse_args()
 
-    start_time = time.time()
+    
     
     directorio_completo = os.path.abspath(args.dir)
-    #tweets, num_tweets_comprimidos = procesar_directorio(directorio_completo, args.fecha_inicial, args.fecha_final, args.archivo_hashtags)
+    tweets, num_tweets_comprimidos = procesar_directorio(directorio_completo, args.fecha_inicial, args.fecha_final, args.archivo_hashtags)
 
-    tweets_local, num_tweets_local = procesar_directorio(directorio_completo, args.fecha_inicial, args.fecha_final, args.archivo_hashtags)
-    tweets_globales = comm.gather(tweets_local, root=0)
-    num_tweets_globales = comm.gather(num_tweets_local, root=0)
-
-    if rank == 0:
-        tweets = [tweet for sublist in tweets_globales for tweet in sublist]
-        num_tweets_comprimidos = sum(num_tweets_globales)
-
-    if rank == 0:
-        if args.json_retweets:
-            json_retweets(tweets)
+    if args.json_retweets:
+        json_retweets(tweets)
     
-        if args.json_menciones:
-            json_menciones(tweets)
+    if args.json_menciones:
+        json_menciones(tweets)
 
-        if args.json_corretweets:
-            json_corretweets(tweets)
+    if args.json_corretweets:
+        json_corretweets(tweets)
 
-        if args.grafo_retweets:
-            grafo_retweets = generar_grafo_retweets(tweets)
-            nx.write_gexf(grafo_retweets, 'rt.gexf')
+    if args.grafo_retweets:
+        grafo_retweets = generar_grafo_retweets(tweets)
+        nx.write_gexf(grafo_retweets, 'rt.gexf')
+        #print("Grafo de retweets generado (rt.gexf)")
     
-        if args.grafo_menciones:
-            grafo_menciones = generar_grafo_menciones(tweets)
-            nx.write_gexf(grafo_menciones, 'mencion.gexf')
+    if args.grafo_menciones:
+        grafo_menciones = generar_grafo_menciones(tweets)
+        nx.write_gexf(grafo_menciones, 'mencion.gexf')
+        #print("Grafo de menciones generado (mencion.gexf)")
     
-        if args.grafo_corretweets:
-            grafo_corretweets = generar_grafo_corretweets(tweets)
-            nx.write_gexf(grafo_corretweets, 'corrtw.gexf')
+    if args.grafo_corretweets:
+        grafo_corretweets = generar_grafo_corretweets(tweets)
+        nx.write_gexf(grafo_corretweets, 'corrtw.gexf')
+        #print("Grafo de co-retweets generado (corrtw.gexf)")
 
     print("Tiempo de ejecución total:", time.time() - start_time, "segundos")
+   # print("Argumentos ingresados: ", args)
 if __name__ == "__main__":
     main()
