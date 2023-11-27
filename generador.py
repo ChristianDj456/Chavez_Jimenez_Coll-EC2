@@ -9,7 +9,7 @@ from collections import defaultdict
 import argparse
 
 
-def procesar_tweets(archivo_bz2, fecha_inicial=None, fecha_final=None, archivo_hashtags=None):
+def procesar_tweets(archivo_bz2, fecha_inicial=None, fecha_final=None, hashtags=None):
     tweets = []
 
     with bz2.BZ2File(archivo_bz2, 'rb') as f_in:
@@ -22,31 +22,31 @@ def procesar_tweets(archivo_bz2, fecha_inicial=None, fecha_final=None, archivo_h
                 # Verifica si el tweet está dentro del rango de fechas
                 if (fecha_inicial is None or created_at >= fecha_inicial) and (fecha_final is None or created_at <= fecha_final):
                     # Verifica si el tweet contiene al menos uno de los hashtags especificados
-                    if archivo_hashtags is None or tiene_hashtags(tweet_data, archivo_hashtags):
+                    if hashtags is None or tiene_hashtags(tweet_data, hashtags):
                         tweets.append(tweet_data)
 
     return tweets
 
-def tiene_hashtags(tweet, archivo_hashtags):
-    with open(archivo_hashtags, 'r') as file:
-        hashtags = set(line.strip().lower() for line in file)
-
+def tiene_hashtags(tweet, hashtags):
     tweet_hashtags = set(hashtag['text'].lower() for hashtag in tweet['entities']['hashtags'])
-
     return bool(hashtags.intersection(tweet_hashtags))
 
 def procesar_directorio(directorio, fecha_inicial=None, fecha_final=None, archivo_hashtags=None):
     num_tweets_comprimidos = 0
     tweets = []
 
+    hashtags = None
+    if archivo_hashtags is not None:
+        with open(archivo_hashtags, 'r') as file:
+            hashtags = set(line.strip().lower() for line in file)
+
     for root, _, files in os.walk(directorio):
-        #print("Recorriendo directorio:", root)
         for archivo in files:
             if archivo.endswith('.json.bz2'):
                 archivo_bz2 = os.path.join(root, archivo)
                 num_tweets_comprimidos += 1
-                
-                tweets.extend(procesar_tweets(archivo_bz2, fecha_inicial, fecha_final, archivo_hashtags))
+                tweets += procesar_tweets(archivo_bz2, fecha_inicial, fecha_final, hashtags)
+
     return tweets, num_tweets_comprimidos
 
 def json_retweets(tweets):
